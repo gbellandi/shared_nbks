@@ -1,0 +1,78 @@
+import numpy as np
+import cv2
+from skimage.segmentation import clear_border
+import matplotlib.pyplot as plt
+
+from bubblekicker.bubblekicker import (BubbleKicker, batchbubblekicker, bubble_properties_calculate, 
+                                       _bubble_properties_filter, bubble_properties_plot)
+
+from bubblekicker.pipelines import CannyPipeline, AdaptiveThresholdPipeline
+import matplotlib
+from matplotlib import pyplot as plt
+import os
+import seaborn as sns
+import sys
+%matplotlib inline
+img = cv2.imread('C:\Users\Serena\Desktop\campione20mL.jpg',-1)
+img_B,img_G,img_R = cv2.split(img)
+img2 = cv2.merge((img_R,img_G,img_B))
+plt.imshow(img2), plt.grid('off'), plt.xticks([]), plt.yticks([]), plt.title('IMMAGINE ORIGINALE'); 
+plt.savefig('C:\Users\Serena\Desktop\OriginalRGB.jpg',dpi=500)
+plt.figure(figsize=(10, 10))
+plt.subplot(3,3,1),plt.imshow(img_B, cmap='gray'), plt.title('CANALE BLU'), plt.xticks([]), plt.yticks([]); 
+plt.subplot(3,3,2), plt.imshow(img_G, cmap='gray'), plt.title('CANALE VERDE'), plt.xticks([]), plt.yticks([]); 
+plt.subplot(3,3,3), plt.imshow(img_R, cmap='gray'), plt.title('CANALE ROSSO'), plt.xticks([]), plt.yticks([]); 
+plt.savefig('C:\Users\Serena\Desktop\channels.jpg',dpi=500)
+binImg = cv2.adaptiveThreshold(img_G, 1, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 91,18)
+plt.imshow(binImg), plt.title('IMMAGINE BINARIA-OGGETTI RILEVATI'), plt.xticks([]), plt.yticks([]);  
+plt.savefig('C:\Users\Serena\Desktop\oggetti_rilevati.jpg',dpi=500)
+dst_inv = cv2.bitwise_not(binImg) 
+img_clb = clear_border(dst_inv, buffer_size=5, bgval=1)
+plt.figure(figsize=(10,10))
+plt.imshow(img_clb), plt.title('IMMAGINE RIPULITA AI BORDI'), plt.grid('off'), plt.xticks([]), plt.yticks([]);
+plt.savefig('C:\Users\Serena\Desktop\IMMAGINE RIPULITA AI BORDI.jpg', dpi=500)
+img_outl = cv2.merge((img_R * img_clb, img_G * img_clb, img_B * img_clb))
+plt.figure(figsize=(10, 10));
+plt.imshow(img_G * img_clb), plt.title('GRANULI RILEVATI'), plt.xticks([]), plt.yticks([])
+plt.imshow(img_outl), plt.title('GRANULI RILEVATI'), plt.grid('off'), plt.xticks([]), plt.yticks([]);
+plt.savefig('C:\Users\Serena\Desktop\GRANULI_RILEVATI.jpg',dpi=500)
+marker_image, props = bubble_properties_calculate(img_clb,rules={'convexity': {'min':1.9 }, 'circularity_reciprocal': {'max': 2.8, 'min': 0.2}});
+props.head()
+props['equivalent_diameter_mm']=props['equivalent_diameter']/49
+props.head()
+def classe(equivalent_diameter_mm):
+    if equivalent_diameter_mm>= 1:
+        return 5 
+    elif 0.8<=equivalent_diameter_mm<1:
+        return 4
+    elif 0.5<=equivalent_diameter_mm<0.8:
+        return 3
+    elif 0.2<=equivalent_diameter_mm<0.5:
+        return 2
+    elif equivalent_diameter_mm<0.2:
+        return 1
+props["equivalent_diameter_mm"].apply(classe);
+props['classe']=props["equivalent_diameter_mm"].apply(classe)
+props.head()
+classi=props["equivalent_diameter_mm"].apply(classe)
+[1 for i in classi if i==1]
+print('classe 1')
+len( [1 for i in classi if i==1])
+[2 for i in classi if i==2] 
+print('classe 2')
+len([2 for i in classi if i==2]  )
+[3 for i in classi if i==3] 
+print('classe 3')
+len([3 for i in classi if i==3] )
+[4 for i in classi if i==4]
+print('classe 4')
+len([4 for i in classi if i==4])
+[5 for i in classi if i==5]
+print('classe 5')
+len([5 for i in classi if i==5])
+len(classi)
+fig = plt.figure(figsize=(8,8));
+plt.xticks([k for k in range(0,7)]);
+classi.hist(bins=5, rwidth=0.8, color='green', align='mid', alpha=0.8);
+plt.savefig('C:\Users\Serena\Desktop\distribuzione_granulometrica.jpg',dpi=500)
+
